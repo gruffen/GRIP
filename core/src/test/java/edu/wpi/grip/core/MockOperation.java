@@ -1,33 +1,32 @@
 package edu.wpi.grip.core;
 
 
-import com.google.common.eventbus.EventBus;
+import edu.wpi.grip.core.sockets.InputSocket;
+import edu.wpi.grip.core.sockets.OutputSocket;
 
-import java.util.Optional;
+import com.google.common.collect.ImmutableList;
+
+import java.util.List;
 
 public class MockOperation implements Operation {
-    @Override
-    public String getName() {
-        return "Mock Operation";
-    }
+  public static final OperationDescription DESCRIPTION
+      = OperationDescription.builder()
+      .name("Mock Operation")
+      .summary("A mock operation summary")
+      .build();
 
-    @Override
-    public String getDescription() {
-        return "A mock operation description";
-    }
+  @Override
+  public List<InputSocket> getInputSockets() {
+    return ImmutableList.of();
+  }
 
-    @Override
-    public InputSocket<?>[] createInputSockets(EventBus eventBus) {
-        return new InputSocket<?>[0];
-    }
+  @Override
+  public List<OutputSocket> getOutputSockets() {
+    return ImmutableList.of();
+  }
 
-    @Override
-    public OutputSocket<?>[] createOutputSockets(EventBus eventBus) {
-        return new OutputSocket<?>[0];
-    }
-
-    @Override
-    public void perform(InputSocket<?>[] inputs, OutputSocket<?>[] outputs, Optional<?> data) {
-
-    }
+  @Override
+  public void perform() {
+    // This operation does nothing because it is a mock.
+  }
 }

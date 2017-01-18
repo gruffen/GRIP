@@ -1,57 +1,89 @@
 package edu.wpi.grip.core;
 
-import com.google.common.eventbus.EventBus;
+import edu.wpi.grip.core.metrics.MockTimer;
+import edu.wpi.grip.core.operations.network.MockGripNetworkModule;
+import edu.wpi.grip.core.sockets.InputSocket;
+import edu.wpi.grip.core.sockets.OutputSocket;
+import edu.wpi.grip.core.sockets.Socket;
 import edu.wpi.grip.core.util.MockExceptionWitness;
+import edu.wpi.grip.util.GripCoreTestModule;
+
+import com.google.common.eventbus.EventBus;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
+import com.google.inject.util.Modules;
+
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
 public class StepTest {
-    private EventBus eventBus;
-    private Operation addition;
+  private EventBus eventBus;
+  private OperationMetaData additionMeta;
+  private final GripCoreTestModule testModule = new GripCoreTestModule();
 
-    @Before
-    public void setUp() {
-        this.eventBus = new EventBus();
-        this.addition = new AdditionOperation();
-    }
+  @Before
+  public void setUp() {
+    testModule.setUp();
+    Injector injector = Guice.createInjector(Modules.override(testModule)
+        .with(new MockGripNetworkModule()));
+    InputSocket.Factory isf = injector.getInstance(InputSocket.Factory.class);
+    OutputSocket.Factory osf = injector.getInstance(OutputSocket.Factory.class);
+    additionMeta = new OperationMetaData(AdditionOperation.DESCRIPTION, () -> new
+        AdditionOperation(isf, osf));
+    eventBus = injector.getInstance(EventBus.class);
+  }
 
-    @Test(expected = NullPointerException.class)
-    public void testOperationNotNull() {
-        new Step.Factory(eventBus, (origin) -> null).create(null);
-    }
+  @After
+  public void tearDown() {
+    testModule.tearDown();
+  }
 
-    @Test
-    public void testStep() {
-        Step step = new Step.Factory(eventBus, (origin) -> new MockExceptionWitness(eventBus, origin)).create(addition);
-        Socket<Double> a = (Socket<Double>) step.getInputSockets()[0];
-        Socket<Double> b = (Socket<Double>) step.getInputSockets()[1];
-        Socket<Double> c = (Socket<Double>) step.getOutputSockets()[0];
+  @Test(expected = NullPointerException.class)
+  public void testOperationNotNull() {
+    new Step.Factory((origin) -> null, MockTimer.MOCK_FACTORY).create(null);
+  }
 
-        a.setValue(1234.0);
-        b.setValue(5678.0);
-        assertEquals((Double) (1234.0 + 5678.0), c.getValue().get());
+  @Test
+  public void testStep() {
+    Step step = new Step.Factory((origin) -> new MockExceptionWitness(eventBus, origin),
+        MockTimer.MOCK_FACTORY)
+        .create(additionMeta);
+    Socket<Double> a = (Socket<Double>) step.getInputSockets().get(0);
+    Socket<Double> b = (Socket<Double>) step.getInputSockets().get(1);
+    Socket<Double> c = (Socket<Double>) step.getOutputSockets().get(0);
 
-        eventBus.unregister(step);
-    }
+    a.setValue(1234.0);
+    b.setValue(5678.0);
+    step.runPerformIfPossible();
 
-    @Test
-    public void testSocketDirection() {
-        Step step = new Step.Factory(eventBus, (origin) -> new MockExceptionWitness(eventBus, origin)).create(addition);
-        Socket<Double> a = (Socket<Double>) step.getInputSockets()[0];
-        Socket<Double> b = (Socket<Double>) step.getInputSockets()[1];
-        Socket<Double> c = (Socket<Double>) step.getOutputSockets()[0];
+    assertEquals("Step did not perform correctly", (Double) (1234.0 + 5678.0), c.getValue().get());
+    eventBus.unregister(step);
+  }
 
-        assertEquals(Socket.Direction.INPUT, a.getDirection());
-        assertEquals(Socket.Direction.INPUT, b.getDirection());
-        assertEquals(Socket.Direction.OUTPUT, c.getDirection());
-    }
+  @Test
+  public void testSocketDirection() {
+    Step step = new Step.Factory((origin) -> new MockExceptionWitness(eventBus, origin),
+        MockTimer.MOCK_FACTORY)
+        .create(additionMeta);
+    Socket<Double> a = (Socket<Double>) step.getInputSockets().get(0);
+    Socket<Double> b = (Socket<Double>) step.getInputSockets().get(1);
+    Socket<Double> c = (Socket<Double>) step.getOutputSockets().get(0);
 
-    @Test
-    public void testGetOperation() {
-        Step step = new Step.Factory(eventBus, (origin) -> new MockExceptionWitness(eventBus, origin)).create(addition);
+    assertEquals("Socket was not an input", Socket.Direction.INPUT, a.getDirection());
+    assertEquals("Socket was not an input", Socket.Direction.INPUT, b.getDirection());
+    assertEquals("Socket was not an output", Socket.Direction.OUTPUT, c.getDirection());
+  }
 
-        assertEquals(addition, step.getOperation());
-    }
+  @Test
+  public void testGetOperation() {
+    Step step = new Step.Factory((origin) -> new MockExceptionWitness(eventBus, origin),
+        MockTimer.MOCK_FACTORY)
+        .create(additionMeta);
+
+    assertEquals("Operation descriptions were not the same", additionMeta.getDescription(),
+        step.getOperationDescription());
+  }
 }

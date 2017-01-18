@@ -1,38 +1,54 @@
 package edu.wpi.grip.core;
 
-import com.google.common.eventbus.EventBus;
+import edu.wpi.grip.core.sockets.InputSocket;
+import edu.wpi.grip.core.sockets.OutputSocket;
+import edu.wpi.grip.core.sockets.SocketHint;
+import edu.wpi.grip.core.sockets.SocketHints;
+
+import com.google.common.collect.ImmutableList;
+
+import java.util.List;
 
 public class AdditionOperation implements Operation {
-    private SocketHint<Number>
-            aHint = SocketHints.createNumberSocketHint("a", 0.0),
-            bHint = SocketHints.createNumberSocketHint("b", 0.0),
-            cHint = SocketHints.Outputs.createNumberSocketHint("c", 0.0);
+  public static final OperationDescription DESCRIPTION =
+      OperationDescription.builder()
+          .name("Add")
+          .summary("Compute the sum of two doubles")
+          .build();
+  private final SocketHint<Number> aHint = SocketHints.createNumberSocketHint("a", 0.0);
+  private final SocketHint<Number> bHint = SocketHints.createNumberSocketHint("b", 0.0);
+  private final SocketHint<Number> cHint = SocketHints.Outputs.createNumberSocketHint("c", 0.0);
 
-    @Override
-    public String getName() {
-        return "Add";
-    }
+  private final InputSocket<Number> a;
+  private final InputSocket<Number> b;
+  private final OutputSocket<Number> c;
 
-    @Override
-    public String getDescription() {
-        return "Compute the sum of two doubles";
-    }
+  public AdditionOperation(InputSocket.Factory isf, OutputSocket.Factory osf) {
+    a = isf.create(aHint);
+    b = isf.create(bHint);
+    c = osf.create(cHint);
+  }
 
-    @Override
-    public InputSocket[] createInputSockets(EventBus eventBus) {
-        return new InputSocket[]{new InputSocket<>(eventBus, aHint), new InputSocket<>(eventBus, bHint)};
-    }
+  @Override
+  public List<InputSocket> getInputSockets() {
+    return ImmutableList.of(
+        a,
+        b
+    );
+  }
 
-    @Override
-    public OutputSocket[] createOutputSockets(EventBus eventBus) {
-        return new OutputSocket[]{new OutputSocket<>(eventBus, cHint)};
-    }
+  @Override
+  public List<OutputSocket> getOutputSockets() {
+    return ImmutableList.of(
+        c
+    );
+  }
 
-    @Override
-    public void perform(InputSocket[] inputs, OutputSocket[] outputs) {
-        InputSocket<Number> a = inputs[0], b = inputs[1];
-        OutputSocket<Number> c = outputs[0];
-
-        c.setValue(a.getValue().get().doubleValue() + b.getValue().get().doubleValue());
-    }
+  @Override
+  public void perform() {
+    double valA = a.getValue().get().doubleValue();
+    double valB = b.getValue().get().doubleValue();
+    double valC = valA + valB;
+    c.setValue(valC);
+  }
 }

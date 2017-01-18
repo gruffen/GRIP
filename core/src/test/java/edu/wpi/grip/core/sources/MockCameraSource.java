@@ -1,47 +1,39 @@
 package edu.wpi.grip.core.sources;
 
+import edu.wpi.grip.core.sockets.MockOutputSocketFactory;
+import edu.wpi.grip.core.util.MockExceptionWitness;
+
 import com.google.common.eventbus.EventBus;
-import org.bytedeco.javacv.FrameGrabber;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 
 public class MockCameraSource extends CameraSource {
 
-    private boolean started = false;
+  private boolean started = false;
 
-    static class FrameGrabberFactory implements CameraSource.FrameGrabberFactory {
+  public MockCameraSource(EventBus eventBus, String address) throws IOException {
+    super(eventBus, new MockOutputSocketFactory(eventBus), new MockFrameGrabberFactory(),
+        MockExceptionWitness.MOCK_FACTORY, address);
+  }
 
-        @Override
-        public FrameGrabber create(int deviceNumber) {
-            return null;
-        }
+  public MockCameraSource(EventBus eventBus, int deviceNumber) throws IOException {
+    super(eventBus, new MockOutputSocketFactory(eventBus), new MockFrameGrabberFactory(),
+        MockExceptionWitness.MOCK_FACTORY, deviceNumber);
+  }
 
-        @Override
-        public FrameGrabber create(String addressProperty) throws MalformedURLException {
-            return null;
-        }
-    }
+  @Override
+  public MockCameraSource startAsync() {
+    started = true;
+    return this;
+  }
 
-    public MockCameraSource(EventBus eventBus, String address) throws IOException {
-        super(eventBus, new FrameGrabberFactory(), origin -> null, address);
-    }
+  @Override
+  public MockCameraSource stopAsync() {
+    started = false;
+    return this;
+  }
 
-    public MockCameraSource(EventBus eventBus, int deviceNumber) throws IOException {
-        super(eventBus, new FrameGrabberFactory(), origin -> null, deviceNumber);
-    }
-
-    @Override
-    public void start() throws IOException {
-        started = true;
-    }
-
-    @Override
-    public void stop() {
-        started = false;
-    }
-
-    public boolean isStarted() {
-        return started;
-    }
+  public boolean isRunning() {
+    return started;
+  }
 }
